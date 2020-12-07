@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1607361766520.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1621232646",
+    "id" : "DB50DA87",
+    "lastKnownWriteTime" : 1607371419,
+    "last_content_update" : 1607371419635,
+    "path" : "G:/My Drive/R packages/converthapgenr/R/convert_haps_to_geno.R",
+    "project_path" : "R/convert_haps_to_geno.R",
+    "properties" : {
+        "cursorPosition" : "21,10",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

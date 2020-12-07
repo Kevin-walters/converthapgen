@@ -1,0 +1,80 @@
+#' Make genotype files from Hapgen .haps files.
+#' @param case_haps A vector of strings of length two. The case files are
+#'   assumed to be numbered from 1 to \code{num_datsets}. This string vector
+#'   specifies the string before the number (including the path if needed) and
+#'   the string after the number. One of the strings can be NULL if necessary.
+#' @param cont_haps A string vector as for \code{case_haps} but for
+#'   control file names.
+#' @param num_datasets The number of datasets supplied.
+#' @param maf_thresh The threshold to apply when removing rarer SNPs. If the
+#'   threshold is zero it will just remove monomorphic SNPs.
+#' @param causal_snp An interger indicating the causal SNP number (between 1 and
+#'   the number of snps).
+#' @return A list. The first list element is a 3-dimensional array of dimension
+#'   'number of cases plus controls' by 'number of snps' by \code{num_datasets}
+#'   containing the genotypes. They are coded as 0, 1 and 2 where 1 is
+#'   heterozygous and 0 and 2 are homozygous (either could be the rare SNP). The
+#'   second list element is the new causal SNP number (since SNPs with minor
+#'   allele frequency below the\code{maf_thresh} have been removed). The third
+#'   list element is the numbers of the SNPs that have been retained (MAF above
+#'   the threshold). The fourth, optional, list element is the matrix of
+#'   r-squared values.
+#' @export
+
+create_geno_from_haplo_data <- function(case_haps_file, cont_haps_file,
+                                        num_datasets = 1, maf_thresh = 0.01,
+                                        causal_snp = 67, calc_r2 = T){
+for(dataset in 1:num_datasets) {
+  cat("dataset =", dataset, "\n")
+  cat(paste(case_haps_file[1], dataset, case_haps_file[2], sep=""),"\n")
+  case_haps <- utils::read.table(paste(case_haps_file[1], dataset,
+                                       case_haps_file[2], sep=""))
+  cat("read in case data ",dataset,"\t")
+  control_haps <- utils::read.table(paste(cont_haps_file[1], dataset,
+                                          cont_haps_file[2], sep=""))
+  cat("read in control data ",dataset,"\n")
+  num_cases <- dim(control_haps)[2] / 2
+  cat("Number of cases=", num_cases, "\t")
+  num_controls <- dim(control_haps)[2] / 2
+  cat("Number of controls=", num_controls, "\t")
+  num_snps <- dim(control_haps)[1]
+  cat("Number of SNPs=", num_snps, "\n\n")
+  total_ss <- num_cases + num_controls
+  if(dataset == 1) {
+    geno_by_data <- array(data = NA, dim = c(total_ss, num_snps, num_datasets))
+    maf_matrix <- matrix(NA, nrow = num_datasets, ncol = num_snps)
+    if(calc_r2){
+      rsq_array <- array(data = NA, dim = c(num_snps, num_snps, num_datasets))
+    }
+
+  }
+    # Sum the relavent columns to get the genotypes (0, 1 or 2)
+    # for homozygous (0,0), henterozygous (0,1) and homozygous (1,1)
+    case_geno_mat <- case_haps[, seq(1, 2 * num_cases -1, by = 2)] +
+      case_haps[, 2 * seq(1, num_cases)]
+    control_geno_mat <- control_haps[, seq(1, 2 * num_controls -1, by = 2)] +
+      control_haps[, 2 * seq(1, num_controls)]
+
+    geno_by_data[,, dataset] <- t(cbind(case_geno_mat, control_geno_mat))
+    # Calculate the MAF for each dataset
+    maf_matrix[dataset, ] <- calculate_maf_from_geno_data(t(control_geno_mat))
+    if(calc_r2) rsq_array[,, dataset] <- r_sq_from_haplo(control_haps)
+ } # end of dataset loop
+
+  rare_snps_logical_mat <- maf_matrix <= maf_thresh
+  rare_snps_ind <- apply(rare_snps_logical_mat, 2, any)
+  rare_or_mono_snps <- seq(1, num_snps)[rare_snps_ind]
+  retained_snps <- setdiff(seq(1, num_snps), rare_or_mono_snps)
+
+  geno_by_data_remove_rare <- geno_by_data[,retained_snps, , drop = FALSE]
+
+  new_causal <- which(retained_snps == causal_snp)
+  cat("case-control genotype array has dimension ", dim(geno_by_data_remove_rare), "\n")
+  cat("The new causal SNP is number ", new_causal, "\n")
+  if(calc_r2){
+    return(list(geno_by_data_remove_rare, new_causal, retained_snps, rsq_array))
+  } else return(list(geno_by_data_remove_rare, new_causal, retained_snps))
+
+}#end of create_geno_from_haps function
+
+
